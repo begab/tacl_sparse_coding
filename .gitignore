@@ -1,0 +1,17 @@
+.pydevproject
+.project
+__pycache__
+*#
+*~
+*.alph
+*.sh
+*.log
+*.swp
+*.tmp
+*.pyc
+*.ner
+*.out
+*.png
+crf_outputs/
+crf_models/
+
