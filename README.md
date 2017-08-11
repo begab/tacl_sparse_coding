@@ -1,4 +1,5 @@
-#Accompanying code for TACL publication entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence'
+Accompanying code for the paper entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence'
+==========
 
 This repository contains the source code used in the [TACL paper](https://www.transacl.org/ojs/index.php/tacl/article/view/1063) entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence'.
 
@@ -13,4 +14,4 @@ do
     python tacl_sequence_tagging.py UNIV --train_file $TRAIN_FILE --test_file $TEST_FILE --lang en --dense_vec_file $DENSE_EMBEDDING_FILE --brown_file=$BROWN_FILE --feature_mode $f;
 done
 ```
-
+Further sparse representations for various languages can be downloaded from [here](https://begab.github.io/sparse_embeds).
