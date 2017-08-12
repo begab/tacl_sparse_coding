@@ -217,7 +217,7 @@ def main():
     sst = SparseSeqTagger(args)
     tagger = sst.train_model(reuse=sst.partial_training == -1)
     acc, sentence_acc = sst.run_experiment(tagger)
-    print('\t'.join([sst.lang, sst.model_path, str(acc), str(sentence_acc)]))
+    print('\t'.join(['Lang:', sst.lang, 'Model: ', sst.model_path, 'Per-token acc.:', str(acc), 'All correct sentences:',  str(sentence_acc)]))
 
 if __name__ == "__main__":
   main()
