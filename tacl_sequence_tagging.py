@@ -146,14 +146,14 @@ class SparseSeqTagger:
       features = {feat_prefix + (sent[position][0] if len(sent) > position >=0 else w): 1.}
     else:
       features = {}
-    if self.feature == 'dense':
+    if wid != -1 and self.feature == 'dense':
       features = dict(zip(map(lambda x: feat_prefix + 'dim_{}'.format(x), range(self.embs.shape[1])), self.embs[wid]))
-    elif self.feature == 'Brown':
+    elif wid != -1 and self.feature == 'Brown':
       cluster_id = self.brown.get(w)
       if cluster_id:
         for prefix_length in [4, 6, 10, 20]:
           features['brown_{}{}_{}'.format(feat_prefix, prefix_length, cluster_id[0:prefix_length])]=1.
-    else:
+    elif wid != -1:
       coeffs = self.alphas.getrow(wid).tocoo()
       for j, v in zip(coeffs.col, coeffs.data):
         features['{}{}dim_{}'.format(feat_prefix, 'P' if v > 0 else 'N', j)] = 1. # P for positive N for negative contribution
