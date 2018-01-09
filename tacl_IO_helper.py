@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import gzip
+import gensim
 import codecs
 import pickle
 import numpy as np
@@ -17,9 +18,11 @@ def get_tag_dict(mode):
     tags = ['VERB','NOUN','PRON','ADJ','ADV','ADP','CONJ','DET','NUM','PRT','X','.']
   elif mode == 'NER':
     tags = ['-'.join(x) for x in product([c for c in 'BIES'], ['LOC', 'PER', 'ORG', 'MISC'])]+['O']
+  elif 'MWE-' in mode:
+    tags = ['-'.join(x) for x in product([c for c in 'BIE'], ['MWE_COMPOUND_ADJ', 'MWE_COMPOUND_NOUN', 'MWE_IDIOM', 'MWE_LVC', 'MWE_OTHER', 'MVE_VPC'])] + ['-'.join(x) for x in product([c for c in 'BIES'], ['NE_LOC', 'NE_PER', 'NE_ORG', 'NE_MISC'])] + ['O']
   return tags, dict(zip(tags, range(0, len(tags))))
 
-def load_corpus(dataset, corpus_file, lang, transform_to_universal_pos_tags=True):
+def load_corpus(dataset, corpus_file, lang, transform_to_universal_pos_tags=True, train=None):
   corpus_id = None
   if dataset == 'UNIV':
     corpus = read_conllUD_file(corpus_file)
@@ -37,6 +40,9 @@ def load_corpus(dataset, corpus_file, lang, transform_to_universal_pos_tags=True
       corpus = [list(map(lambda x: (x[0], convert(univ_converter_id, x[1])), s)) for s in corpus]
   elif dataset == 'NER':
     corpus = extract_NER_sentences(lang, corpus_file)
+  elif 'MWE-' in dataset:
+    article_id = int(dataset.split('-')[1]) # this article is used for testing
+    corpus = read_mwe(corpus_file, article_id, train)
   return corpus
 
 def read_conllX(directory, suffix, lang):
@@ -77,6 +83,26 @@ def read_conllUD_file(location):
           tokens = []
   return enforce_unicode(sentences)
 
+def read_mwe(file_location, fold, train):
+  '''
+  Reads in the Wiki50 corpus.
+  fold indicates the ID for the article which should be used for testing
+  '''
+  document = 0
+  sentences=[]
+  sentence = []
+  with open(file_location) as f:
+    for l in f:
+      s=l.strip().split(' ')
+      if s[0] == '-DOCSTART-':
+        document+=1
+      elif len(s) > 1 and s[0] != '-DOCSTART-' and ((train and document != fold) or (not train and document == fold)):
+        sentence.append((s[0], 'O' if 'SENT_BOUND' in s[1] else s[1]))
+      elif s[0] != '-DOCSTART-' and len(sentence) > 0:
+        sentences.append(transform_labels_to_IOBES(sentence))
+        sentence = []
+  return enforce_unicode(sentences)
+
 def extract_NER_sentences(lang, corpus_file):
   sentences=[]
   sentence = []
@@ -110,17 +136,18 @@ def transform_labels_to_IOBES(sentence):
     prev_label=labels[i]
   return new_sentence
 
-def print_predictions(test_sents, preds, outfile):
+def print_predictions(test_sents, preds, outfile, append=True):
+  """
+  If the file already exists then it appends it on default.
+  """
   output_dir = '/'.join(outfile.split('/')[0:-1])
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-  with codecs.open(outfile, 'w', 'utf-8') as f:
-    if append:
-      f.write('\n')
+  with open(outfile, 'a' if append else 'w') as f:
     for s in range(0,len(test_sents)):
       for t in range(0,len(test_sents[s])):
         f.write('{} {} {}\n'.format(test_sents[s][t][0], test_sents[s][t][1], preds[s][t]))
-      f.write('\n')
+      f.write('\n\n')
 
 def enforce_unicode(sentences):
   """
@@ -131,7 +158,29 @@ def enforce_unicode(sentences):
     return sentences
   return [[(unicode(t[0], "utf8"), unicode(t[1], "utf8")) for t in s] for s in sentences]
 
+def load_gzipped_embeddings(file_to_open):
+  model = gensim.models.KeyedVectors.load_word2vec_format(file_to_open)
+  temp_i2w = {}
+  words = []
+  nonzero_row_indices = []
+  zero_embedding_counter = 0
+  for v in model.vocab:
+    vocab_entry = model.vocab[v]
+    embedding = model.syn0[vocab_entry.index, :]
+    if np.linalg.norm(embedding) > 0:
+      words.append(vocab_entry)
+      nonzero_row_indices.append(vocab_entry.index)
+      temp_i2w[vocab_entry.index] = v
+    else:
+      zero_embedding_counter += 1
+  i2w = {i:v[1] for i,v in enumerate(sorted(temp_i2w.items()))}
+  w2i = {v:k for k,v in i2w.items()}
+  embeddings = np.array(model.syn0[sorted(nonzero_row_indices)])
+  return words, embeddings, w2i, i2w
+
 def load_embeddings(dense_file):
+  if dense_file.endswith('.gz'):
+    return load_gzipped_embeddings(dense_file)
   try:
     f = open(dense_file, 'rb')
   except IOError as e:

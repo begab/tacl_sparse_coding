@@ -1,4 +1,3 @@
-import re
 import os
 import sys
 import pickle
@@ -22,16 +21,17 @@ class SparseSeqTagger:
 
   def __init__(self, params):
     self.crf_dir = '{}/'.format(params.crf_out_dir)
-    if not os.path.exists(self.crf_dir):
-      os.makedirs(self.crf_dir)
+    for d in [params.crf_out_dir, params.prediction_out_dir]:
+      if d is not None and not os.path.exists(d):
+        os.makedirs(d)
     self.K = params.K
     self.lda = params.lda
     if params.dense_vec_file is None and params.feature_mode == 'dense':
-      print('For feature_mode>2 dense_vec_file parameter has to be set.')
+      print('For dense mode dense_vec_file parameter has to be set.')
       sys.exit(2)
     elif params.feature_mode == 'Brown':
       if params.brown_file is None:
-        print('For feature_mode==2 brown_file parameter has to be set.')
+        print('For Brown cluster mode brown_file parameter has to be set.')
         sys.exit(2)
       else:
          self.brown = load_brown_clusters(params.brown_file)
@@ -47,24 +47,56 @@ class SparseSeqTagger:
 
     self.tags, self.tag_dict = get_tag_dict(self.dataset)
     self.lang = params.lang
-    self.train_data = load_corpus(self.dataset, params.train_file, params.lang)
-    self.test_data = load_corpus(self.dataset, params.test_file, params.lang)
+    self.train_data = load_corpus(self.dataset, params.train_file, params.lang, train=True)
+    self.test_data = load_corpus(self.dataset, params.test_file, params.lang, train=False)
+    print("# train tokens: {}".format(len([token for sent in self.train_data for token in sent])))
+    print("# test tokens: {}".format(len([token for sent in self.test_data for token in sent])))
 
     self.partial_training = params.partial_training
     if self.partial_training != -1:
       self.train_data = self.train_data[0:self.partial_training]
 
     self.words, self.embs, self.word_ids, self.id_words = load_embeddings(params.dense_vec_file)
-    self.alphas = self.calc_alphas('{}/alphas'.format(os.path.dirname(params.dense_vec_file)))
+    self.preprocess = params.preprocess_steps
+    for pp in self.preprocess.split('-'):
+        if pp == 'unit':
+            self.embs=self.length_normalize_rows(self.embs)
+        elif pp == 'center':
+            self.embs=self.mean_center_columns(self.embs)
+    alphas_file = '{}/alphas'.format(os.path.dirname(params.dense_vec_file))
+    self.alphas = self.calc_alphas(alphas_file)
 
-    self.model_path='{}{}.crf'.format(self.crf_dir, '_'.join(map(str, [model_prefix, use_word_identity, self.window_size, self.feature])))
+    self.model_path='{}/{}.crf'.format(self.crf_dir, '_'.join(map(str, [model_prefix, use_word_identity, self.window_size, self.feature, self.preprocess])))
     if self.feature.startswith('FR'):
-      self.model_path='{}{}.crf'.format(self.crf_dir, '_'.join(map(str, [model_prefix, self.window_size, self.feature])))
+      self.model_path='{}/{}.crf'.format(self.crf_dir, '_'.join(map(str, [model_prefix, self.window_size, self.feature])))
     elif self.feature.startswith('SC'):
-      self.model_path='{}{}.crf'.format(self.crf_dir, '_'.join(map(str, [model_prefix, self.lda, self.K, use_word_identity, self.window_size, self.alphas_mode])))
+      self.model_path='{}/{}.crf'.format(self.crf_dir, '_'.join(map(str, [model_prefix, self.lda, self.K, use_word_identity, self.window_size, self.alphas_mode, self.preprocess])))
+    print(self.model_path)
+
+    self.output_path = None
+    if params.prediction_out_dir is not None:
+      self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix.split('-')[0], use_word_identity, self.window_size, self.feature, self.preprocess])))
+      if self.feature.startswith('FR'):
+        self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix.split('-')[0], self.window_size, self.feature])))
+      elif self.feature.startswith('SC'):
+        self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix.split('-')[0], self.lda, self.K, use_word_identity, self.window_size, self.alphas_mode, self.preprocess])))
+    print(self.output_path)
+
+
+  def length_normalize_rows(self, embeddings):
+    model_row_norms = np.sqrt((embeddings**2).sum(axis=1))[:, np.newaxis]
+    embeddings /= model_row_norms
+    return embeddings
+
+
+  def mean_center_columns(self, embeddings):
+    embeddings -= np.mean(embeddings, axis=0)
+    return embeddings
+
 
   def calc_alphas(self, output_dir):
-    alphas_file = '{}/{}-{}-{}.alph'.format(output_dir, self.lang, self.K, self.lda)
+    alphas_file = '{}/{}.alph'.format(output_dir, '-'.join(map(str, [self.lang, self.K, self.lda, self.preprocess])))
+    print(alphas_file)
     if os.path.isfile(alphas_file) or 'False' in self.alphas_mode: # the unconstrained dictionary model needs to be pre-existent
       return pickle.load(open(alphas_file, 'rb'))
 
@@ -172,16 +204,16 @@ class SparseSeqTagger:
     golds = list(itertools.chain.from_iterable(golds))
     cm = confusion_matrix(golds, list(itertools.chain.from_iterable(preds)))
     info = tagger.info()
-    if re.search('NER', self.model_path):
-      out_file = self.model_path.replace('.crf', '{}.out'.format(self.partial_training))
-      print_predictions(self.test_data, preds, out_file)
+    if self.output_path is not None:
+      print_predictions(self.test_data, preds, self.output_path)
     accuracy = round(1.*np.diag(cm).sum()/cm.sum(), 4)
     sentence_level_accuracy = round(1.*len(perfect_sent_ids)/len(y_test), 4)
     return accuracy, sentence_level_accuracy
 
 def main():
     parser = argparse.ArgumentParser(description="Run Sparse Sequence Labeling experiments")
-    parser.add_argument("dataset", choices=['CONLLX', 'UNIV', 'NER'])
+    parser.add_argument("dataset", choices=['CONLLX', 'UNIV', 'NER'] + ['MWE-'+str(f+1) for f in range(50)])
+    parser.add_argument('--preprocess_steps', help='in what way input vectors to be preprocessed', choices=['intact', 'unit', 'unit-center', 'center', 'center-unit'], required=False, default='intact')
     parser.add_argument("--train_file", help="training file location", type=str, required=True)
     parser.add_argument("--test_file", help="test file location", type=str, required=True)
     parser.add_argument("--lang", help="language", type=str, required=True)
@@ -203,6 +235,7 @@ def main():
     parser.add_argument("--lda", help="lambda for sparse coding [default: 0.1]", type=float, default=0.1)
     parser.add_argument("--K", help="# of basis vectors [default: 1024]", type=int, default=1024)
     parser.add_argument("--crf_out_dir", help="sets the model output directory [default:'./crf_models']", default='crf_models')
+    parser.add_argument("--prediction_out_dir", help="sets the output directory", default=None)
     parser.add_argument("--window_size", help="window size for feature generation [default: 1]", type=int, default=1)
     parser.add_argument("--feature_mode", help="feature mode [default: SC]", type=str, choices=['FRw', 'FRwc', 'Brown', 'dense', 'SC'], default='SC')
     
