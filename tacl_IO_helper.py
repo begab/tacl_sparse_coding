@@ -136,14 +136,14 @@ def transform_labels_to_IOBES(sentence):
     prev_label=labels[i]
   return new_sentence
 
-def print_predictions(test_sents, preds, outfile, append=True):
+def print_predictions(test_sents, preds, outfile):
   """
   If the file already exists then it appends it on default.
   """
   output_dir = '/'.join(outfile.split('/')[0:-1])
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-  with open(outfile, 'a' if append else 'w') as f:
+  with open(outfile, 'w') as f:
     for s in range(0,len(test_sents)):
       for t in range(0,len(test_sents[s])):
         f.write('{} {} {}\n'.format(test_sents[s][t][0], test_sents[s][t][1], preds[s][t]))

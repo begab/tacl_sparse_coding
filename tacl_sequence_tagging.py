@@ -75,11 +75,11 @@ class SparseSeqTagger:
 
     self.output_path = None
     if params.prediction_out_dir is not None:
-      self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix.split('-')[0], use_word_identity, self.window_size, self.feature, self.preprocess])))
+      self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix, use_word_identity, self.window_size, self.feature, self.preprocess])))
       if self.feature.startswith('FR'):
-        self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix.split('-')[0], self.window_size, self.feature])))
+        self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix, self.window_size, self.feature])))
       elif self.feature.startswith('SC'):
-        self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix.split('-')[0], self.lda, self.K, use_word_identity, self.window_size, self.alphas_mode, self.preprocess])))
+        self.output_path='{}/{}.out'.format(params.prediction_out_dir, '_'.join(map(str, [model_prefix, self.lda, self.K, use_word_identity, self.window_size, self.alphas_mode, self.preprocess])))
     print(self.output_path)
 
 
