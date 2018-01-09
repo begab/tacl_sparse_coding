@@ -3,7 +3,7 @@ import re
 DIGITS = re.compile("[0-9]", re.UNICODE) # Normalize digits by replacing them with #
 
 def get_word(sent, position, word_ids):
-  if position >= 0 and position < len(sent):
+  if 0 <= position < len(sent):
     w = normalize_word(sent[position][0], word_ids)
   elif position == -1:
     w = '<S>'
@@ -11,7 +11,7 @@ def get_word(sent, position, word_ids):
     w = '</S>'
   else:
     w = '<PAD>'
-  return word_ids[w], w
+  return word_ids[w] if w in word_ids else -1, w # -1 denotes a missing item
 
 def case_normalizer(word, dictionary):
   """

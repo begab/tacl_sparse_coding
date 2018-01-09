@@ -8,7 +8,6 @@ import pickle
 import numpy as np
 
 from universal_tags import convert
-from collections import defaultdict
 from itertools import chain, product
 from nltk.corpus.reader import DependencyCorpusReader
 
@@ -175,7 +174,7 @@ def load_gzipped_embeddings(file_to_open):
     else:
       zero_embedding_counter += 1
   i2w = {i:v[1] for i,v in enumerate(sorted(temp_i2w.items()))}
-  w2i = defaultfict(lambda: -1, {v:k for k,v in i2w.items()})
+  w2i = {v:k for k,v in i2w.items()}
   embeddings = np.array(model.syn0[sorted(nonzero_row_indices)])
   return words, embeddings, w2i, i2w
 
