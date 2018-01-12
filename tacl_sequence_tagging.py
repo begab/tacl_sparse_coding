@@ -96,6 +96,8 @@ class SparseSeqTagger:
 
   def calc_alphas(self, output_dir):
     alphas_file = '{}/{}.alph'.format(output_dir, '-'.join(map(str, [self.lang, self.K, self.lda, self.preprocess])))
+    if self.alphas_nonneg:
+        alphas_file = alphas_file.replace('.alph', '-NN.alph')
     print(alphas_file)
     if os.path.isfile(alphas_file) or 'False' in self.alphas_mode: # the unconstrained dictionary model needs to be pre-existent
       return pickle.load(open(alphas_file, 'rb'))
