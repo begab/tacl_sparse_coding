@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import pickle
@@ -98,7 +100,12 @@ class SparseSeqTagger:
     alphas_file = '{}/{}.alph'.format(output_dir, '-'.join(map(str, [self.lang, self.K, self.lda, self.preprocess])))
     print(alphas_file)
     if os.path.isfile(alphas_file) or 'False' in self.alphas_mode: # the unconstrained dictionary model needs to be pre-existent
-      return pickle.load(open(alphas_file, 'rb'))
+      try:
+        A = pickle.load(open(alphas_file, 'rb'))
+        return A
+      except: # it can happen if the coefficients were pickled in python2
+        return pickle.load(open(alphas_file, 'rb'), encoding='latin1')
+      
 
     if not os.path.exists(output_dir):
       os.makedirs(output_dir)
