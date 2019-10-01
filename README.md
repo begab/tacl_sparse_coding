@@ -1,4 +1,4 @@
-Accompanying code for the paper entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence'
+Accompanying code for the paper entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence Labeling'
 ==========
 
 This repository contains the source code used in the [TACL paper](https://www.transacl.org/ojs/index.php/tacl/article/view/1063) entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence Labeling'.
