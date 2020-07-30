@@ -4,7 +4,7 @@ Accompanying code for the paper entitled 'Sparse Coding of Neural Word Embedding
 This repository contains the source code used in the [TACL paper](https://www.transacl.org/ojs/index.php/tacl/article/view/1063) entitled 'Sparse Coding of Neural Word Embeddings for Multilingual Sequence Labeling'.
 
 ## Online demo
-The Part-of-Speech tagging models obtained by the code base can be [tested online for 29 languages](http://rgai.inf.u-szeged.hu/prosperAM/nlp).
+The Part-of-Speech tagging models obtained by the code base can be [tested online for 29 languages](http://www.inf.u-szeged.hu/~berendg/nlp_demos/nlp).
 
 ## Sample code to try the code
 Sample code for running the experiments for the English UDv1.2 treebank.
